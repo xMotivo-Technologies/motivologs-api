@@ -37,35 +37,43 @@ async function sendForgotPasswordMail({
             "
           >
 
+            <!-- Header -->
             <tr>
               <td
                 style="
                   padding:30px;
                   text-align:center;
                   background:#001E2B;
-                  color:#ffffff;
                 "
               >
-                <h1
+                <img
+                  src="https://motivologs.com/images/logo.png"
+                  alt="Motivo Logs"
+                  width="160"
                   style="
-                    margin:0;
-                    font-size:24px;
-                    font-weight:700;
+                    display:block;
+                    margin:0 auto;
+                    max-width:160px;
+                    height:auto;
+                    border:0;
+                    outline:none;
+                    text-decoration:none;
                   "
-                >
-                  Motivo Logs
-                </h1>
+                />
               </td>
             </tr>
 
+            <!-- Content -->
             <tr>
               <td style="padding:40px 30px;">
 
                 <h2
                   style="
-                    margin-top:0;
+                    margin:0 0 20px 0;
                     color:#001E2B;
                     font-size:22px;
+                    line-height:1.3;
+                    font-weight:700;
                   "
                 >
                   Reset Your Password
@@ -73,6 +81,7 @@ async function sendForgotPasswordMail({
 
                 <p
                   style="
+                    margin:0 0 16px 0;
                     color:#374151;
                     font-size:15px;
                     line-height:1.6;
@@ -83,6 +92,7 @@ async function sendForgotPasswordMail({
 
                 <p
                   style="
+                    margin:0 0 16px 0;
                     color:#374151;
                     font-size:15px;
                     line-height:1.6;
@@ -94,6 +104,7 @@ async function sendForgotPasswordMail({
 
                 <p
                   style="
+                    margin:0;
                     color:#374151;
                     font-size:15px;
                     line-height:1.6;
@@ -102,6 +113,7 @@ async function sendForgotPasswordMail({
                   Click the button below to create a new password.
                 </p>
 
+                <!-- Button -->
                 <div
                   style="
                     margin:30px 0;
@@ -119,6 +131,7 @@ async function sendForgotPasswordMail({
                       border-radius:7px;
                       font-size:15px;
                       font-weight:600;
+                      line-height:1;
                     "
                   >
                     Reset Password
@@ -127,6 +140,7 @@ async function sendForgotPasswordMail({
 
                 <p
                   style="
+                    margin:0 0 16px 0;
                     color:#6b7280;
                     font-size:13px;
                     line-height:1.6;
@@ -137,6 +151,7 @@ async function sendForgotPasswordMail({
 
                 <p
                   style="
+                    margin:0;
                     color:#6b7280;
                     font-size:13px;
                     line-height:1.6;
@@ -147,9 +162,10 @@ async function sendForgotPasswordMail({
                   will remain unchanged.
                 </p>
 
+                <!-- Fallback Link -->
                 <p
                   style="
-                    margin-top:30px;
+                    margin:30px 0 0 0;
                     color:#9ca3af;
                     font-size:12px;
                     line-height:1.5;
@@ -159,12 +175,21 @@ async function sendForgotPasswordMail({
                   If the button doesn't work, copy and paste this
                   link into your browser:
                   <br />
-                  ${resetUrl}
+                  <a
+                    href="${resetUrl}"
+                    style="
+                      color:#197d3f;
+                      text-decoration:none;
+                    "
+                  >
+                    ${resetUrl}
+                  </a>
                 </p>
 
               </td>
             </tr>
 
+            <!-- Footer -->
             <tr>
               <td
                 style="
