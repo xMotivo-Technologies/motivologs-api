@@ -52,7 +52,7 @@ async function getProducts(country, operator = "any") {
 async function buyActivationNumber(
   country,
   product,
-  operator = "virtual51"
+  operator = "any"
 ) {
   const response = await client.get(
     `/user/buy/activation/${country}/${operator}/${product}`
