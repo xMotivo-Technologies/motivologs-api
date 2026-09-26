@@ -12,11 +12,17 @@ async function sendForgotPasswordMail({
       `https://motivologs.com/reset-password/${token}`;
 
     const response = await resend.emails.send({
-      from: "Nura SMS <no-reply@motivologs.com>",
+      from: "Motivo Logs Support <no-reply@motivologs.com>",
       to: [email],
       subject: "Reset Your Motivo Logs Password",
       html: `
-        <div style="background-color:#f5f3ff;padding:40px 0;font-family:Arial,Helvetica,sans-serif;">
+        <div
+          style="
+            background-color:#f3f6f5;
+            padding:40px 0;
+            font-family:Arial,Helvetica,sans-serif;
+          "
+        >
 
           <table
             align="center"
@@ -36,7 +42,7 @@ async function sendForgotPasswordMail({
                 style="
                   padding:30px;
                   text-align:center;
-                  background:#6d28d9;
+                  background:#001E2B;
                   color:#ffffff;
                 "
               >
@@ -44,9 +50,10 @@ async function sendForgotPasswordMail({
                   style="
                     margin:0;
                     font-size:24px;
+                    font-weight:700;
                   "
                 >
-                  Nura SMS
+                  Motivo Logs
                 </h1>
               </td>
             </tr>
@@ -57,7 +64,8 @@ async function sendForgotPasswordMail({
                 <h2
                   style="
                     margin-top:0;
-                    color:#4c1d95;
+                    color:#001E2B;
+                    font-size:22px;
                   "
                 >
                   Reset Your Password
@@ -65,7 +73,7 @@ async function sendForgotPasswordMail({
 
                 <p
                   style="
-                    color:#4b5563;
+                    color:#374151;
                     font-size:15px;
                     line-height:1.6;
                   "
@@ -75,7 +83,7 @@ async function sendForgotPasswordMail({
 
                 <p
                   style="
-                    color:#4b5563;
+                    color:#374151;
                     font-size:15px;
                     line-height:1.6;
                   "
@@ -86,7 +94,7 @@ async function sendForgotPasswordMail({
 
                 <p
                   style="
-                    color:#4b5563;
+                    color:#374151;
                     font-size:15px;
                     line-height:1.6;
                   "
@@ -104,11 +112,11 @@ async function sendForgotPasswordMail({
                     href="${resetUrl}"
                     style="
                       display:inline-block;
-                      background:#6d28d9;
+                      background:#197d3f;
                       color:#ffffff;
                       text-decoration:none;
                       padding:14px 28px;
-                      border-radius:8px;
+                      border-radius:7px;
                       font-size:15px;
                       font-weight:600;
                     "
@@ -163,12 +171,12 @@ async function sendForgotPasswordMail({
                   padding:20px 30px;
                   text-align:center;
                   font-size:12px;
-                  color:#9ca3af;
+                  color:#6b7280;
                   border-top:1px solid #e5e7eb;
                 "
               >
                 © ${new Date().getFullYear()}
-                Nura SMS. All rights reserved.
+                Motivo Logs. All rights reserved.
               </td>
             </tr>
 
