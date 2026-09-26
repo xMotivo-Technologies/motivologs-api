@@ -1,6 +1,11 @@
 const client = require("../config/fivesim");
 require("dotenv").config();
 
+// The 5sim operator used for every quote/purchase, editable in Render
+// without a code change. Defaults to "virtual8" if unset — 5sim's operator
+// names are case-sensitive lowercase; "Virtual8" 400s.
+const DEFAULT_OPERATOR = process.env.MOTIVOLOGS_FIVESIM_OPERATOR || "virtual8";
+
 // admin - change later to only allow admin users to access this service
 async function getUserProfile() {
   const response = await client.get("/user/profile");
@@ -14,7 +19,7 @@ async function getCountries() {
   return response.data;
 }
 
-async function getProducts(country, operator = "any") {
+async function getProducts(country, operator = DEFAULT_OPERATOR) {
   const response = await client.get(
     `/guest/products/${country}/${operator}`
   );
@@ -53,7 +58,7 @@ async function getProducts(country, operator = "any") {
 async function buyActivationNumber(
   country,
   product,
-  operator = "any"
+  operator = DEFAULT_OPERATOR
 ) {
   const response = await client.get(
     `/user/buy/activation/${country}/${operator}/${product}`
@@ -65,7 +70,7 @@ async function buyActivationNumber(
 async function buyHostingNumber(
   country,
   product,
-  operator = "any"
+  operator = DEFAULT_OPERATOR
 ) {
   const response = await client.get(
     `/user/buy/hosting/${country}/${operator}/${product}`

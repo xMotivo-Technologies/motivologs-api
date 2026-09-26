@@ -4,6 +4,11 @@ const creditWallet = require("../../services/wallet/creditWallet");
 const TransactionModel = require("../../models/Transactions");
 const OrderModel = require("../../models/Order");
 
+// The 5sim operator used for every quote/purchase, editable in Render
+// without a code change. Defaults to "virtual8" if unset — 5sim's operator
+// names are case-sensitive lowercase; "Virtual8" 400s.
+const DEFAULT_OPERATOR = process.env.MOTIVOLOGS_FIVESIM_OPERATOR || "virtual8";
+
 const getUserProfile = async (req, res) => {
   try {
     const profile = await fivesimService.getUserProfile();
@@ -45,7 +50,7 @@ const getCountries = async (req, res) => {
 const getProducts = async (req, res) => {
   try {
     const { country } = req.params;
-    const { operator = "any" } = req.query;
+    const { operator = DEFAULT_OPERATOR } = req.query;
 
     if (!country) {
       return res.status(400).json({
@@ -78,7 +83,7 @@ const buyActivationNumber = async (req, res) => {
     const {
       country,
       product,
-      operator = "any",
+      operator = DEFAULT_OPERATOR,
     } = req.body;
 
     if (!country || !product) {
@@ -241,7 +246,7 @@ const buyHostingNumber = async (req, res) => {
     const {
       country,
       product,
-      operator = "any",
+      operator = DEFAULT_OPERATOR,
     } = req.body;
 
     if (!country || !product) {
