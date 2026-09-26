@@ -1,6 +1,7 @@
 const fivesimService = require("../../services/fivesimService");
 const debitWallet = require("../../services/wallet/debitWallet");
 const creditWallet = require("../../services/wallet/creditWallet");
+const TransactionModel = require("../../models/Transactions");
 
 const getUserProfile = async (req, res) => {
   try {
@@ -76,7 +77,7 @@ const buyActivationNumber = async (req, res) => {
     const {
       country,
       product,
-      operator = "virtual51",
+      operator = "any",
     } = req.body;
 
     if (!country || !product) {
@@ -153,6 +154,13 @@ const buyActivationNumber = async (req, res) => {
           product,
           operator
         );
+
+      // Link the purchase back to this order so a later cancel can find
+      // what to refund.
+      await TransactionModel.findOneAndUpdate(
+        { reference },
+        { $set: { "meta.orderId": String(order.id) } }
+      );
 
       return res.status(200).json({
         message: "Activation number purchased successfully",
@@ -294,11 +302,56 @@ const cancelOrder = async (req, res) => {
       });
     }
 
+    if (!req.user?.id) {
+      return res.status(401).json({
+        message: "Unauthorized",
+      });
+    }
+
     const order = await fivesimService.cancelOrder(orderId);
 
+    // Refund the customer if we can find the purchase this order came from.
+    let refunded = false;
+    let refundedAmount = 0;
+
+    const originalTx = await TransactionModel.findOne({
+      user: req.user.id,
+      type: "debit",
+      "meta.orderId": String(orderId),
+    });
+
+    if (originalTx) {
+      const refundReference = `${originalTx.reference}-REFUND`;
+      const existingRefund = await TransactionModel.findOne({
+        reference: refundReference,
+      });
+
+      if (!existingRefund) {
+        await creditWallet({
+          userId: req.user.id,
+          amount: originalTx.amount,
+          reference: refundReference,
+          source: "SYSTEM",
+          meta: {
+            service: "5sim_activation_refund",
+            originalReference: originalTx.reference,
+            orderId: String(orderId),
+            reason: "order_cancelled",
+          },
+        });
+
+        refunded = true;
+        refundedAmount = originalTx.amount;
+      }
+    }
+
     return res.status(200).json({
-      message: "Order cancelled successfully",
+      message: refunded
+        ? "Order cancelled and refunded successfully"
+        : "Order cancelled successfully",
       order,
+      refunded,
+      refundedAmount,
     });
   } catch (error) {
     console.error(
