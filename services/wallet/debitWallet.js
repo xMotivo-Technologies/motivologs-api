@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 const WalletModel = require("../../models/Wallet");
 const TransactionModel = require("../../models/Transactions");
 
-const debitWallet = async (userId, amount, reference, meta = {}) => {
+const debitWallet = async (userId, amount, reference, meta = {}, status = "success") => {
   if (!amount || amount <= 0) {
     throw new Error("Invalid amount");
   }
