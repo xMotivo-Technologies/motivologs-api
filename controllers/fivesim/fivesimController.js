@@ -2,6 +2,7 @@ const fivesimService = require("../../services/fivesimService");
 const debitWallet = require("../../services/wallet/debitWallet");
 const creditWallet = require("../../services/wallet/creditWallet");
 const TransactionModel = require("../../models/Transactions");
+const OrderModel = require("../../models/Order");
 
 const getUserProfile = async (req, res) => {
   try {
@@ -177,6 +178,19 @@ const buyActivationNumber = async (req, res) => {
         { $set: { "meta.orderId": String(order.id) } }
       );
 
+      // Persist the order itself — this is what makes phone number and
+      // code available in order history, not just for the active order.
+      await OrderModel.create({
+        user: userId,
+        orderId: String(order.id),
+        reference,
+        phone: order.phone,
+        service: product,
+        country,
+        amount: productPrice,
+        status: "pending",
+      });
+
       return res.status(200).json({
         message: "Activation number purchased successfully",
         order,
@@ -323,6 +337,15 @@ const checkOrder = async (req, res) => {
 
     const order = await fivesimService.checkOrder(orderId);
 
+    // As soon as a code shows up, save it against the order record so it's
+    // there in order history — not just visible while this order is active.
+    if (order.sms?.length > 0) {
+      await OrderModel.updateOne(
+        { orderId: String(orderId), code: null },
+        { $set: { code: order.sms[0].code } }
+      );
+    }
+
     // "TIMEOUT" = expired without ever receiving an SMS. "BANNED" = the
     // number got banned by the target service before a code arrived.
     // Neither is a completed order, so refund the customer the next time
@@ -336,6 +359,13 @@ const checkOrder = async (req, res) => {
         orderId,
         { reason: order.status === "BANNED" ? "order_banned" : "order_expired" }
       ));
+
+      if (refunded) {
+        await OrderModel.updateOne(
+          { orderId: String(orderId) },
+          { $set: { status: "expired" } }
+        );
+      }
     }
 
     return res.status(200).json({
@@ -376,6 +406,11 @@ const finishOrder = async (req, res) => {
           "meta.orderId": String(orderId),
         },
         { $set: { status: "success" } }
+      );
+
+      await OrderModel.updateOne(
+        { user: req.user.id, orderId: String(orderId) },
+        { $set: { status: "completed" } }
       );
     }
 
@@ -418,6 +453,11 @@ const cancelOrder = async (req, res) => {
       req.user.id,
       orderId,
       { reason: "order_cancelled" }
+    );
+
+    await OrderModel.updateOne(
+      { user: req.user.id, orderId: String(orderId) },
+      { $set: { status: "cancelled" } }
     );
 
     return res.status(200).json({
@@ -495,6 +535,42 @@ const getSmsInbox = async (req, res) => {
   }
 };
 
+// The logged-in user's own order history — this is what backs the SMS
+// Order History table, with phone number and code persisted per order.
+const getMyOrders = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
+
+    const [orders, total] = await Promise.all([
+      OrderModel.find({ user: req.user.id })
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      OrderModel.countDocuments({ user: req.user.id }),
+    ]);
+
+    return res.status(200).json({
+      data: orders,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+        hasNextPage: page < Math.ceil(total / limit),
+        hasPrevPage: page > 1,
+      },
+    });
+  } catch (error) {
+    console.error("Get my orders error:", error);
+
+    return res.status(500).json({
+      message: "Unable to retrieve order history",
+    });
+  }
+};
+
 const getBalance = async (req, res) => {
   try {
     const balance = await fivesimService.getBalance();
@@ -526,4 +602,5 @@ module.exports = {
   banOrder,
   getSmsInbox,
   getBalance,
+  getMyOrders,
 };

@@ -16,6 +16,7 @@ const {
   getSmsInbox,
   getBalance,
   getUserProfile,
+  getMyOrders,
 } = require("../../controllers/fivesim/fivesimController");
 
 router.get("/profile", getUserProfile);
@@ -39,5 +40,7 @@ router.post("/order/:orderId/ban", authToken, banOrder);
 router.get("/order/:orderId/inbox", authToken, getSmsInbox);
 
 router.get("/balance", authToken, getBalance);
+
+router.get("/orders", authToken, getMyOrders);
 
 module.exports = router;
