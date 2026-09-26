@@ -262,10 +262,13 @@ const buyHostingNumber = async (req, res) => {
 // Refunds the purchase behind `orderId` if it hasn't been refunded yet.
 // Shared by checkOrder (auto-refund on expiry) and cancelOrder (manual cancel).
 const refundOrderIfNeeded = async (userId, orderId, meta = {}) => {
+  // Not filtering by status: "pending" here on purpose — transactions
+  // debited before that status existed (or updated some other way) are
+  // still legitimately refundable. The existingRefund check below is what
+  // actually prevents double-refunding.
   const originalTx = await TransactionModel.findOne({
     user: userId,
     type: "debit",
-    status: "pending",
     "meta.orderId": String(orderId),
   });
 
@@ -321,16 +324,18 @@ const checkOrder = async (req, res) => {
 
     const order = await fivesimService.checkOrder(orderId);
 
-    // 5sim marks an order "TIMEOUT" once it expires without ever receiving
-    // an SMS — refund the customer automatically the next time we notice.
+    // "TIMEOUT" = expired without ever receiving an SMS. "BANNED" = the
+    // number got banned by the target service before a code arrived.
+    // Neither is a completed order, so refund the customer the next time
+    // we notice either one.
     let refunded = false;
     let refundedAmount = 0;
 
-    if (order.status === "TIMEOUT") {
+    if (["TIMEOUT", "BANNED"].includes(order.status)) {
       ({ refunded, refundedAmount } = await refundOrderIfNeeded(
         req.user.id,
         orderId,
-        { reason: "order_expired" }
+        { reason: order.status === "BANNED" ? "order_banned" : "order_expired" }
       ));
     }
 
