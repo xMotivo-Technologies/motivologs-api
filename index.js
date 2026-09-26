@@ -35,6 +35,8 @@ app.use("/api", require("./routes/wallet/virtualAccountRoute"));
 app.use("/api", require("./routes/wallet/walletRoute"));
 app.use("/api", require("./routes/wallet/transactionRoute"));
 app.use("/api", require("./routes/wallet/webhookRoute"));
+app.use("/api", require("./routes/admin/AdminAuthRoute"));
+app.use("/api", require("./routes/admin/AdminRoute"));
 
 
 // Test route

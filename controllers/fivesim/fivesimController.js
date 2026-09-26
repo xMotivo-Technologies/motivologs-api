@@ -117,16 +117,15 @@ const buyActivationNumber = async (req, res) => {
       });
     }
 
-    // Calculate your markup
-    // const markupPercent = Number(
-    //   process.env.NURASMS_MARKUP_PERCENT || 0
-    // );
+    // What 5sim actually charges us for this number, frozen at purchase
+    // time (not recalculated later, since the exchange rate can change) —
+    // this is what makes real profit numbers possible in the admin panel.
+    const fivesimPriceUSD = Number(productData.Price);
+    const fivesimCostNGN = Math.round(
+      fivesimPriceUSD * Number(process.env.MOTIVOLOGS_USD_NGN_RATE)
+    );
 
-    // const markup = fiveSimPrice * (markupPercent / 100);
-
-    // Final amount charged to customer
-    // const customerPrice = fiveSimPrice + markup;
-    console.log(`Customer price: ${productPrice}, 5sim price: ${productPrice})`
+    console.log(`Customer price: ${productPrice}, 5sim cost: ${fivesimCostNGN}`
     );
 
     const reference = `ML-ACT-${userId}-${Date.now()}`;
@@ -144,8 +143,8 @@ const buyActivationNumber = async (req, res) => {
         product,
         operator,
         productPrice,
-        // markup,
-        // markupPercent,
+        fivesimPriceUSD,
+        fivesimCostNGN,
       },
       "pending"
     );

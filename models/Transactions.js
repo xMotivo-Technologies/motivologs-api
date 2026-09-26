@@ -16,6 +16,7 @@ const transactionSchema = new Schema(
     currentBalance: { type: Number },
     meta: { type: Object },
     description: String,
+    source: { type: String, default: "SYSTEM" },
   },
   { timestamps: true },
 );
