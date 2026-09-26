@@ -20,11 +20,11 @@ async function getProducts(country, operator = "any") {
   );
 
   const exchangeRate = Number(
-    process.env.NURASMS_USD_NGN_RATE
+    process.env.MOTIVOLOGS_USD_NGN_RATE
   );
 
   const markupPercent = Number(
-    process.env.NURASMS_MARKUP_PERCENT || 20
+    process.env.MOTIVOLOGS_MARKUP_PERCENT || 20
   );
 
   if (!exchangeRate || exchangeRate <= 0) {
