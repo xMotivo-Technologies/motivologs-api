@@ -55,18 +55,18 @@ const genVirtualAccount = async (user) => {
         first_name: user.firstName,
         last_name: user.lastName,
         phone,
-        preferred_bank:
-          process.env.NODE_ENV === "production"
-            ? "titan-paystack"
-            : "test-bank",
+        preferred_bank: "titan-paystack",
         country: "NG",
+        metadata: {
+          userId: user._id.toString(),
+        },
       },
       {
         headers: {
           Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
           "Content-Type": "application/json",
         },
-      }
+      },
     );
 
     console.log("Paystack response:", response.data);
@@ -75,7 +75,7 @@ const genVirtualAccount = async (user) => {
   } catch (err) {
     console.error(
       "Paystack virtual account error:",
-      err.response?.data || err.message
+      err.response?.data || err.message,
     );
 
     throw err;
