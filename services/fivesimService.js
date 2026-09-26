@@ -23,8 +23,10 @@ async function getProducts(country, operator = "any") {
     process.env.MOTIVOLOGS_USD_NGN_RATE
   );
 
-  const markupPercent = Number(
-    process.env.MOTIVOLOGS_MARKUP_PERCENT || 20
+  // Flat NGN markup added to every product, editable in Render without a
+  // code change. Defaults to 800 if unset.
+  const flatMarkup = Number(
+    process.env.MOTIVOLOGS_FLAT_MARKUP ?? 800
   );
 
   if (!exchangeRate || exchangeRate <= 0) {
@@ -38,11 +40,10 @@ async function getProducts(country, operator = "any") {
 
     const priceNGN = priceUSD * exchangeRate;
 
-    const markup = priceNGN * (markupPercent / 100);
+    const customerPrice = priceNGN + flatMarkup;
 
-    const customerPrice = priceNGN + markup;
-
-    product.cost = Math.ceil(customerPrice);
+    // Round to the nearest ₦100 (e.g. 2365 -> 2400).
+    product.cost = Math.round(customerPrice / 100) * 100;
     product.currency = "NGN";
   }
 
