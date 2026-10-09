@@ -14,11 +14,9 @@ connectDB();
 app.use(
   cors({
     origin: [
-      "http://127.0.0.1:5501",
-      "http://localhost:5173",
-      "http://localhost:5174",
-      "https://nurais.netlify.app",
+      // "http://localhost:5173",
       "https://motivologs.com",
+      "https://www.motivologs.com",
     ],
     credentials: true,
   }),
