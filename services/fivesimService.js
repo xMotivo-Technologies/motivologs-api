@@ -19,7 +19,10 @@ async function getCountries() {
   return response.data;
 }
 
-async function getProducts(country, operator = DEFAULT_OPERATOR) {
+// `flatMarkup` is optional — pass the admin-configured value from the
+// caller (which checks the database first) when you have it. Falls back to
+// the env var here so this still works standalone (e.g. direct scripts).
+async function getProducts(country, operator = DEFAULT_OPERATOR, flatMarkup) {
   const response = await client.get(
     `/guest/products/${country}/${operator}`
   );
@@ -28,11 +31,7 @@ async function getProducts(country, operator = DEFAULT_OPERATOR) {
     process.env.MOTIVOLOGS_USD_NGN_RATE
   );
 
-  // Flat NGN markup added to every product, editable in Render without a
-  // code change. Defaults to 800 if unset.
-  const flatMarkup = Number(
-    process.env.MOTIVOLOGS_FLAT_MARKUP ?? 800
-  );
+  const resolvedMarkup = flatMarkup != null ? Number(flatMarkup) : Number(process.env.MOTIVOLOGS_FLAT_MARKUP ?? 800);
 
   if (!exchangeRate || exchangeRate <= 0) {
     throw new Error("Invalid USD to NGN exchange rate");
@@ -45,7 +44,7 @@ async function getProducts(country, operator = DEFAULT_OPERATOR) {
 
     const priceNGN = priceUSD * exchangeRate;
 
-    const customerPrice = priceNGN + flatMarkup;
+    const customerPrice = priceNGN + resolvedMarkup;
 
     // Round to the nearest ₦100 (e.g. 2365 -> 2400).
     product.cost = Math.round(customerPrice / 100) * 100;

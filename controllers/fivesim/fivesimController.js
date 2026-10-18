@@ -3,11 +3,39 @@ const debitWallet = require("../../services/wallet/debitWallet");
 const creditWallet = require("../../services/wallet/creditWallet");
 const TransactionModel = require("../../models/Transactions");
 const OrderModel = require("../../models/Order");
+const OperatorMapping = require("../../models/OperatorMapping");
+const Setting = require("../../models/Setting");
 
-// The 5sim operator used for every quote/purchase, editable in Render
-// without a code change. Defaults to "virtual8" if unset — 5sim's operator
-// names are case-sensitive lowercase; "Virtual8" 400s.
+// Fallback operator used when no admin-configured mapping exists for a given
+// service + country. Defaults to "virtual8" if unset — 5sim's operator names
+// are case-sensitive lowercase; "Virtual8" 400s.
 const DEFAULT_OPERATOR = process.env.MOTIVOLOGS_FIVESIM_OPERATOR || "virtual8";
+
+// Admin-editable business values (e.g. flatMarkup) — DB value wins when
+// present, falls back to the matching env var otherwise.
+const getNumericSetting = async (key, envFallback) => {
+  const setting = await Setting.findOne({ key });
+  const value = Number(setting?.value);
+  return Number.isFinite(value) ? value : envFallback;
+};
+
+const getFlatMarkup = () =>
+  getNumericSetting("flatMarkup", Number(process.env.MOTIVOLOGS_FLAT_MARKUP ?? 800));
+
+// Different 5sim operators have different success rates per service per
+// country, so the admin panel can override the operator for a specific
+// (service, country) pair — anything not explicitly mapped keeps using
+// DEFAULT_OPERATOR.
+const resolveOperator = async (country, service) => {
+  if (!country || !service) return DEFAULT_OPERATOR;
+
+  const mapping = await OperatorMapping.findOne({
+    country: String(country).toLowerCase(),
+    service: String(service).toLowerCase(),
+  });
+
+  return mapping?.operator || DEFAULT_OPERATOR;
+};
 
 const getUserProfile = async (req, res) => {
   try {
@@ -47,10 +75,14 @@ const getCountries = async (req, res) => {
   }
 };
 
+// Builds the product list for a country the same way a purchase will
+// actually resolve operators — per-service, via the admin mapping — instead
+// of quoting everything under one operator and then buying under another.
+// An explicit ?operator= still overrides everything for quick debugging.
 const getProducts = async (req, res) => {
   try {
     const { country } = req.params;
-    const { operator = DEFAULT_OPERATOR } = req.query;
+    const { operator: explicitOperator } = req.query;
 
     if (!country) {
       return res.status(400).json({
@@ -58,13 +90,51 @@ const getProducts = async (req, res) => {
       });
     }
 
-    const products = await fivesimService.getProducts(
-      country,
-      operator
+    const flatMarkup = await getFlatMarkup();
+
+    if (explicitOperator) {
+      const products = await fivesimService.getProducts(country, explicitOperator, flatMarkup);
+      return res.status(200).json({ products });
+    }
+
+    const mappings = await OperatorMapping.find({ country: country.toLowerCase() });
+    const operatorByService = new Map(mappings.map((m) => [m.service, m.operator]));
+    const distinctOperators = [...new Set([DEFAULT_OPERATOR, ...operatorByService.values()])];
+
+    // Isolated per operator — a bad mapping (typo'd/invalid operator name)
+    // should only drop that one service's data, not break the whole country.
+    const productsByOperator = {};
+    await Promise.all(
+      distinctOperators.map(async (op) => {
+        try {
+          productsByOperator[op] = await fivesimService.getProducts(country, op, flatMarkup);
+        } catch (error) {
+          console.error(
+            `Get products error for operator "${op}":`,
+            error.response?.data || error.message
+          );
+          productsByOperator[op] = {};
+        }
+      })
     );
 
+    const allServiceKeys = new Set();
+    Object.values(productsByOperator).forEach((products) => {
+      Object.keys(products).forEach((key) => allServiceKeys.add(key));
+    });
+
+    const merged = {};
+    for (const service of allServiceKeys) {
+      const mappedOperator = operatorByService.get(service) || DEFAULT_OPERATOR;
+      const fromMappedOperator = productsByOperator[mappedOperator]?.[service];
+      // Fall back to the default operator's listing if the mapped operator
+      // doesn't currently have this service available at all.
+      merged[service] = fromMappedOperator || productsByOperator[DEFAULT_OPERATOR]?.[service];
+      if (!merged[service]) delete merged[service];
+    }
+
     return res.status(200).json({
-      products,
+      products: merged,
     });
   } catch (error) {
     console.error(
@@ -80,11 +150,7 @@ const getProducts = async (req, res) => {
 
 const buyActivationNumber = async (req, res) => {
   try {
-    const {
-      country,
-      product,
-      operator = DEFAULT_OPERATOR,
-    } = req.body;
+    const { country, product } = req.body;
 
     if (!country || !product) {
       return res.status(400).json({
@@ -100,10 +166,16 @@ const buyActivationNumber = async (req, res) => {
 
     const userId = req.user.id;
 
+    // Only resolve via the admin mapping when the caller didn't explicitly
+    // ask for a specific operator.
+    const operator = req.body.operator || (await resolveOperator(country, product));
+    const flatMarkup = await getFlatMarkup();
+
     // Get 5sim prices
     const products = await fivesimService.getProducts(
       country,
-      operator
+      operator,
+      flatMarkup
     );
 
     const productData = products[product];
