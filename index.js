@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const connectDB = require("./config/dbConfig");
+const { startOrderSweep } = require("./jobs/orderSweep");
 
 require("dotenv").config();
 
@@ -9,6 +10,7 @@ const app = express();
 
 // DB
 connectDB();
+startOrderSweep();
 
 // Middleware
 app.use(

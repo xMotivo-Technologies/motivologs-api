@@ -425,12 +425,14 @@ const checkOrder = async (req, res) => {
 
     // "TIMEOUT" = expired without ever receiving an SMS. "BANNED" = the
     // number got banned by the target service before a code arrived.
-    // Neither is a completed order, so refund the customer the next time
-    // we notice either one.
+    // "CANCELED" = 5sim's own auto-expiry status for some orders (distinct
+    // from a user-initiated cancel, which never reaches this far pending).
+    // None of these are a completed order, so refund the customer the next
+    // time we notice any of them.
     let refunded = false;
     let refundedAmount = 0;
 
-    if (["TIMEOUT", "BANNED"].includes(order.status)) {
+    if (["TIMEOUT", "BANNED", "CANCELED"].includes(order.status)) {
       ({ refunded, refundedAmount } = await refundOrderIfNeeded(
         req.user.id,
         orderId,
@@ -680,4 +682,5 @@ module.exports = {
   getSmsInbox,
   getBalance,
   getMyOrders,
+  refundOrderIfNeeded,
 };
