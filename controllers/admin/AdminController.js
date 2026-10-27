@@ -205,20 +205,34 @@ const getAllOrders = async (req, res) => {
   }
 };
 
-// Every user, with their wallet balance attached.
+// Every user, with their wallet balance attached. ?search= matches name,
+// username, email, or phone number (case-insensitive, partial match).
 const getAllUsers = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
     const skip = (page - 1) * limit;
+    const { search } = req.query;
+
+    const filter = {};
+    if (search?.trim()) {
+      const regex = new RegExp(search.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+      filter.$or = [
+        { firstName: regex },
+        { lastName: regex },
+        { username: regex },
+        { email: regex },
+        { phoneNumber: regex },
+      ];
+    }
 
     const [users, total] = await Promise.all([
-      UserModel.find()
+      UserModel.find(filter)
         .select("-password -refreshToken -resetPasswordToken -resetPasswordExpires")
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit),
-      UserModel.countDocuments(),
+      UserModel.countDocuments(filter),
     ]);
 
     const userIds = users.map((u) => u._id);
