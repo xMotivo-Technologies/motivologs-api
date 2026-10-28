@@ -17,6 +17,7 @@ const {
   getBalance,
   getUserProfile,
   getMyOrders,
+  getOperatorPrices,
 } = require("../../controllers/fivesim/fivesimController");
 
 router.get("/profile", getUserProfile);
@@ -24,6 +25,8 @@ router.get("/profile", getUserProfile);
 router.get("/countries", getCountries);
 
 router.get("/products/:country", getProducts);
+
+router.get("/operators/:country/:product", getOperatorPrices);
 
 router.post("/buy/activation", authToken, buyActivationNumber);
 

@@ -18,6 +18,14 @@ const userSchema = new Schema(
       type: Date,
       default: null,
     },
+
+    // Tracks whether this user has dismissed the current announcement —
+    // compared against the announcement's updatedAt, so editing it in the
+    // admin panel makes it reappear for everyone, not just new users.
+    lastSeenAnnouncementAt: {
+      type: Date,
+      default: null,
+    },
   },
   { timestamps: true },
 );

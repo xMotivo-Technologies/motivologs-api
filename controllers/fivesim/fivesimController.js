@@ -56,6 +56,44 @@ const getUserProfile = async (req, res) => {
   }
 };
 
+// Every operator available for one service in one country, with price,
+// stock, and delivery rate — lets the customer pick which operator's
+// number to buy instead of it being decided for them. Operators with zero
+// numbers in stock are dropped, since they can't actually be purchased.
+const getOperatorPrices = async (req, res) => {
+  try {
+    const { country, product } = req.params;
+
+    if (!country || !product) {
+      return res.status(400).json({
+        message: "Country and product are required",
+      });
+    }
+
+    const flatMarkup = await getFlatMarkup();
+    const operators = await fivesimService.getOperatorPrices(country, product, flatMarkup);
+
+    // Highest delivery rate first — that's the stat that actually predicts
+    // whether a customer gets their code, so it should drive the order.
+    const inStock = operators
+      .filter((o) => Number(o.count) > 0)
+      .sort((a, b) => b.rate - a.rate);
+
+    return res.status(200).json({
+      operators: inStock,
+    });
+  } catch (error) {
+    console.error(
+      "Get operator prices error:",
+      error.response?.data || error.message
+    );
+
+    return res.status(500).json({
+      message: "Unable to retrieve operator prices",
+    });
+  }
+};
+
 const getCountries = async (req, res) => {
   try {
     const countries = await fivesimService.getCountries();
@@ -412,15 +450,29 @@ const checkOrder = async (req, res) => {
       });
     }
 
+    // Confirms this order actually belongs to the requesting user before
+    // proxying their phone number/SMS code back — this endpoint is
+    // reachable directly by URL (/sms-verification/:orderId), so without
+    // this check anyone logged in could view anyone else's order by
+    // guessing an ID.
+    const ownOrder = await OrderModel.findOne({
+      orderId: String(orderId),
+      user: req.user.id,
+    });
+
+    if (!ownOrder) {
+      return res.status(404).json({
+        message: "Order not found",
+      });
+    }
+
     const order = await fivesimService.checkOrder(orderId);
 
     // As soon as a code shows up, save it against the order record so it's
     // there in order history — not just visible while this order is active.
-    if (order.sms?.length > 0) {
-      await OrderModel.updateOne(
-        { orderId: String(orderId), code: null },
-        { $set: { code: order.sms[0].code } }
-      );
+    if (order.sms?.length > 0 && !ownOrder.code) {
+      ownOrder.code = order.sms[0].code;
+      await ownOrder.save();
     }
 
     // "TIMEOUT" = expired without ever receiving an SMS. "BANNED" = the
@@ -440,15 +492,15 @@ const checkOrder = async (req, res) => {
       ));
 
       if (refunded) {
-        await OrderModel.updateOne(
-          { orderId: String(orderId) },
-          { $set: { status: "expired" } }
-        );
+        ownOrder.status = "expired";
+        await ownOrder.save();
       }
     }
 
     return res.status(200).json({
       order,
+      amount: ownOrder.amount,
+      ownStatus: ownOrder.status,
       refunded,
       refundedAmount,
     });
@@ -683,4 +735,5 @@ module.exports = {
   getBalance,
   getMyOrders,
   refundOrderIfNeeded,
+  getOperatorPrices,
 };

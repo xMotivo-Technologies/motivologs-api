@@ -19,6 +19,22 @@ async function getCountries() {
   return response.data;
 }
 
+// Shared USD -> customer NGN price conversion, used by both getProducts and
+// getOperatorPrices so a service's "from" price and its per-operator prices
+// are always computed the exact same way.
+function toCustomerPriceNGN(priceUSD, flatMarkup) {
+  const exchangeRate = Number(process.env.MOTIVOLOGS_USD_NGN_RATE);
+  if (!exchangeRate || exchangeRate <= 0) {
+    throw new Error("Invalid USD to NGN exchange rate");
+  }
+
+  const resolvedMarkup = flatMarkup != null ? Number(flatMarkup) : Number(process.env.MOTIVOLOGS_FLAT_MARKUP ?? 800);
+  const priceNGN = Number(priceUSD) * exchangeRate + resolvedMarkup;
+
+  // Round to the nearest ₦100 (e.g. 2365 -> 2400).
+  return Math.round(priceNGN / 100) * 100;
+}
+
 // `flatMarkup` is optional — pass the admin-configured value from the
 // caller (which checks the database first) when you have it. Falls back to
 // the env var here so this still works standalone (e.g. direct scripts).
@@ -27,31 +43,33 @@ async function getProducts(country, operator = DEFAULT_OPERATOR, flatMarkup) {
     `/guest/products/${country}/${operator}`
   );
 
-  const exchangeRate = Number(
-    process.env.MOTIVOLOGS_USD_NGN_RATE
-  );
-
-  const resolvedMarkup = flatMarkup != null ? Number(flatMarkup) : Number(process.env.MOTIVOLOGS_FLAT_MARKUP ?? 800);
-
-  if (!exchangeRate || exchangeRate <= 0) {
-    throw new Error("Invalid USD to NGN exchange rate");
-  }
-
   const products = response.data;
 
   for (const product of Object.values(products)) {
-    const priceUSD = Number(product.Price);
-
-    const priceNGN = priceUSD * exchangeRate;
-
-    const customerPrice = priceNGN + resolvedMarkup;
-
-    // Round to the nearest ₦100 (e.g. 2365 -> 2400).
-    product.cost = Math.round(customerPrice / 100) * 100;
+    product.cost = toCustomerPriceNGN(product.Price, flatMarkup);
     product.currency = "NGN";
   }
 
   return products;
+}
+
+// Every operator available for one service in one country, each with its
+// own price/stock/delivery-rate — lets a customer pick exactly which
+// operator's number to buy instead of the backend choosing for them.
+async function getOperatorPrices(country, product, flatMarkup) {
+  const response = await client.get("/guest/prices", {
+    params: { country, product },
+  });
+
+  const byOperator = response.data?.[country]?.[product] || {};
+
+  return Object.entries(byOperator).map(([operator, info]) => ({
+    operator,
+    cost: toCustomerPriceNGN(info.cost, flatMarkup),
+    count: info.count,
+    rate: info.rate,
+    currency: "NGN",
+  }));
 }
 
 async function buyActivationNumber(
@@ -136,6 +154,7 @@ module.exports = {
   getUserProfile,
   getCountries,
   getProducts,
+  getOperatorPrices,
   buyActivationNumber,
   buyHostingNumber,
   checkOrder,
