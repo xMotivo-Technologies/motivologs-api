@@ -41,6 +41,7 @@ app.use("/api", require("./routes/wallet/webhookRoute"));
 app.use("/api", require("./routes/admin/AdminAuthRoute"));
 app.use("/api", require("./routes/admin/AdminRoute"));
 app.use("/api", require("./routes/announcement/AnnouncementRoute"));
+app.use("/api", require("./routes/logs/LogsRoute"));
 
 
 // Test route

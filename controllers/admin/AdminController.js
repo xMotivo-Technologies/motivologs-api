@@ -3,6 +3,24 @@ const WalletModel = require("../../models/Wallet");
 const VirtualAccountModel = require("../../models/VirtualAccounts");
 const TransactionModel = require("../../models/Transactions");
 
+// Every revenue-generating service, so analytics/orders never silently drop
+// a new one the way Buy Logs ("youngpg_log") was originally left out here.
+const PURCHASE_SERVICES = ["5sim_activation", "youngpg_log"];
+const REFUND_SERVICES = ["5sim_activation_refund", "youngpg_log_refund"];
+
+// 5sim's own cost field is already numeric; YoungPG's is a decimal string
+// ("100.00"), so the two have to be picked out and converted per-service
+// rather than just `$ifNull`-ing a single field name.
+const PURCHASE_COST_EXPRESSION = {
+  $switch: {
+    branches: [
+      { case: { $eq: ["$meta.service", "5sim_activation"] }, then: { $ifNull: ["$meta.fivesimCostNGN", 0] } },
+      { case: { $eq: ["$meta.service", "youngpg_log"] }, then: { $toDouble: { $ifNull: ["$meta.youngpgPriceNGN", "0"] } } },
+    ],
+    default: 0,
+  },
+};
+
 // Revenue/cost/profit + a daily breakdown for charts.
 const getAnalytics = async (req, res) => {
   try {
@@ -11,14 +29,14 @@ const getAnalytics = async (req, res) => {
         $match: {
           type: "debit",
           status: "success",
-          "meta.service": "5sim_activation",
+          "meta.service": { $in: PURCHASE_SERVICES },
         },
       },
       {
         $group: {
           _id: null,
           totalRevenue: { $sum: "$amount" },
-          totalCost: { $sum: { $ifNull: ["$meta.fivesimCostNGN", 0] } },
+          totalCost: { $sum: PURCHASE_COST_EXPRESSION },
           count: { $sum: 1 },
         },
       },
@@ -28,7 +46,7 @@ const getAnalytics = async (req, res) => {
       {
         $match: {
           type: "credit",
-          "meta.service": "5sim_activation_refund",
+          "meta.service": { $in: REFUND_SERVICES },
         },
       },
       {
@@ -45,7 +63,7 @@ const getAnalytics = async (req, res) => {
         $match: {
           type: "debit",
           status: "pending",
-          "meta.service": "5sim_activation",
+          "meta.service": { $in: PURCHASE_SERVICES },
         },
       },
       {
@@ -79,7 +97,7 @@ const getAnalytics = async (req, res) => {
         $match: {
           type: "debit",
           status: "success",
-          "meta.service": "5sim_activation",
+          "meta.service": { $in: PURCHASE_SERVICES },
           createdAt: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
         },
       },
@@ -170,7 +188,8 @@ const getAllTransactions = async (req, res) => {
   }
 };
 
-// The SMS-purchase subset of transactions specifically, i.e. "orders".
+// The purchase subset of transactions specifically, i.e. "orders" — SMS and
+// Buy Logs both, plus their refunds.
 const getAllOrders = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
@@ -178,7 +197,7 @@ const getAllOrders = async (req, res) => {
     const skip = (page - 1) * limit;
 
     const filter = {
-      "meta.service": { $in: ["5sim_activation", "5sim_activation_refund"] },
+      "meta.service": { $in: [...PURCHASE_SERVICES, ...REFUND_SERVICES] },
     };
     if (req.query.status) filter.status = req.query.status;
     if (req.query.userId) filter.user = req.query.userId;
