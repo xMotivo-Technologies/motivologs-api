@@ -21,6 +21,8 @@ const {
   updateAnnouncement,
   getMarquee,
   updateMarquee,
+  getMaintenance,
+  updateMaintenance,
 } = require("../../controllers/admin/AdminAnnouncementController");
 const {
   getAllCategories,
@@ -55,6 +57,8 @@ router.get("/admin/announcement", adminAuth, getAnnouncement);
 router.put("/admin/announcement", adminAuth, updateAnnouncement);
 router.get("/admin/marquee", adminAuth, getMarquee);
 router.put("/admin/marquee", adminAuth, updateMarquee);
+router.get("/admin/maintenance", adminAuth, getMaintenance);
+router.put("/admin/maintenance", adminAuth, updateMaintenance);
 
 router.get("/admin/log-categories", adminAuth, getAllCategories);
 router.put("/admin/log-categories/:categoryId", adminAuth, setCategoryEnabled);

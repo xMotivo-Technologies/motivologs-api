@@ -1,5 +1,6 @@
 const Announcement = require("../../models/Announcement");
 const Marquee = require("../../models/Marquee");
+const Maintenance = require("../../models/Maintenance");
 const UserModel = require("../../models/User");
 
 // Only returns the announcement if it's enabled AND this user hasn't
@@ -70,8 +71,28 @@ const getActiveMarquee = async (req, res) => {
   }
 };
 
+// Unauthenticated on purpose — a logged-out visitor has to see this before
+// they can even log in, so it can't sit behind authToken like the others.
+const getMaintenanceStatus = async (req, res) => {
+  try {
+    const maintenance = await Maintenance.findOne();
+
+    return res.status(200).json({
+      isEnabled: Boolean(maintenance?.isEnabled),
+      title: maintenance?.title || "Under Maintenance",
+      message: maintenance?.message || "We're performing scheduled maintenance. Please check back shortly.",
+    });
+  } catch (error) {
+    console.error("Get maintenance status error:", error);
+
+    // Fail open — never let a DB hiccup make the site look down when it isn't.
+    return res.status(200).json({ isEnabled: false });
+  }
+};
+
 module.exports = {
   getActiveAnnouncement,
   markAnnouncementSeen,
   getActiveMarquee,
+  getMaintenanceStatus,
 };

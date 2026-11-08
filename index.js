@@ -31,15 +31,22 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-// Routes
+// Routes — admin, the Paystack webhook, and the maintenance-status check are
+// mounted BEFORE the maintenance gate so they always work regardless of
+// maintenance mode (otherwise no one could turn it back off). Everything
+// below the gate is customer-facing and gets hard-blocked while it's on.
+app.use("/api", require("./routes/admin/AdminAuthRoute"));
+app.use("/api", require("./routes/admin/AdminRoute"));
+app.use("/api", require("./routes/wallet/webhookRoute"));
+app.use("/api", require("./routes/maintenance/MaintenanceRoute"));
+
+app.use("/api", require("./middleware/maintenanceGate"));
+
 app.use("/api", require("./routes/auth/AuthRoute"));
 app.use("/api", require("./routes/fivesim/fivesimRoutes"));
 app.use("/api", require("./routes/wallet/virtualAccountRoute"));
 app.use("/api", require("./routes/wallet/walletRoute"));
 app.use("/api", require("./routes/wallet/transactionRoute"));
-app.use("/api", require("./routes/wallet/webhookRoute"));
-app.use("/api", require("./routes/admin/AdminAuthRoute"));
-app.use("/api", require("./routes/admin/AdminRoute"));
 app.use("/api", require("./routes/announcement/AnnouncementRoute"));
 app.use("/api", require("./routes/logs/LogsRoute"));
 
