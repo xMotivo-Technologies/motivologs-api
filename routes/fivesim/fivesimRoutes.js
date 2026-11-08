@@ -3,6 +3,11 @@ const express = require("express");
 const router = express.Router();
 
 const authToken = require("../../middleware/auth");
+const maintenanceGate = require("../../middleware/maintenanceGate");
+
+// Every endpoint here backs the (login-only) SMS Verification pages, even
+// the few without their own authToken check, so the whole file is gated.
+router.use(maintenanceGate);
 
 const {
   getCountries,

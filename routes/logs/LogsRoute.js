@@ -1,5 +1,6 @@
 const express = require("express");
 const authToken = require("../../middleware/auth");
+const maintenanceGate = require("../../middleware/maintenanceGate");
 const {
   getCategories,
   getGroups,
@@ -12,6 +13,8 @@ const {
 } = require("../../controllers/logs/LogsController");
 
 const router = express.Router();
+
+router.use(maintenanceGate);
 
 router.get("/logs/categories", authToken, getCategories);
 router.get("/logs/groups", authToken, getGroups);

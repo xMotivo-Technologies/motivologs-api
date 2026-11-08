@@ -1,9 +1,13 @@
 const Maintenance = require("../models/Maintenance");
 
-// Hard-blocks every customer-facing route mounted after this middleware in
-// index.js when maintenance mode is on. Admin routes, the Paystack webhook,
-// and the public maintenance-status check are all mounted BEFORE this and
-// so are never affected — otherwise no one could turn it back off.
+// Hard-blocks every route in whichever router file calls `router.use(maintenanceGate)`
+// when maintenance mode is on. Applied only to the files backing genuinely
+// authenticated pages (fivesim, wallet, transactions, logs, announcements,
+// and the post-login half of AuthRoute) — never to admin routes, the Paystack
+// webhook, the public maintenance-status check, or the pre-login auth
+// endpoints (login/signup/forgot-password/reset-password/logout), so the
+// homepage and sign-in flow keep working and there's always a way to turn
+// this back off.
 const maintenanceGate = async (req, res, next) => {
   try {
     const maintenance = await Maintenance.findOne();
